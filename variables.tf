@@ -21,3 +21,17 @@ variable "vpc_cidr" {
     description = "CIDR block of the vpc"
 }
 
+variable "public_subnets_cidr" {
+    type = list
+    description = "CIDR block for public subnet"
+}
+
+variable "private_subnets_cidr" {
+    type = list
+    description = "CIDR block for private subnet"
+}
+
+variable "availability_zones" {
+    type = list
+    description = "Availibility Zone that resources will be deployed in"
+}
