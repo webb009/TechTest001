@@ -132,3 +132,34 @@ resource "aws_route_table_association" "private" {
 }
 
 
+## ################################# ##
+##         Security Groups
+## ################################# ##
+
+# Default Security Group for VPC
+resource "aws_security_group" "default" {
+        name                    = "${var.environment}-default-security-group"
+        description             = "Default security group to allow traffic from VPC"
+        vpc_id                  = aws_vpc.vpc.id
+        depends_on = [
+            aws_vpc.vpc
+        ]
+
+        ingress {
+            from_port           = "0"
+            to_port             = "0"
+            protocol            = "-1"
+            self                = true  
+        }
+           
+        egress {
+            from_port           = "0"
+            to_port             = "0"
+            protocol            = "-1"
+            self                = "true"
+        }
+
+        tags = {
+            Environment         = "${var.environment}"
+        }
+}
