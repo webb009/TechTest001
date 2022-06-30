@@ -160,6 +160,33 @@ resource "aws_security_group" "default" {
         }
 
         tags = {
+            Name                = "${var.environment}-default-security-group"
+            Environment         = "${var.environment}"
+        }
+}
+
+# RDS Security Group
+resource "aws_security_group" "rds" {
+        name                    = "${var.environment}-rds-security-group"
+        description             = "RDS Mysql security group"
+        vpc_id                  = aws_vpc.vpc.id
+
+        ingress {
+            from_port           = 3306
+            to_port             = 3306
+            protocol            = "tcp"
+            security_groups     = ["${aws_security_group.default.id}"]
+        }
+        
+        egress {
+            from_port           = 0
+            to_port             = 0
+            protocol            = "tcp"
+            cidr_blocks         = ["0.0.0.0/0"]
+        }
+
+        tags = {
+            Name                = "${var.environment}-rds-security-group"
             Environment         = "${var.environment}"
         }
 }
