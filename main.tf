@@ -1,3 +1,6 @@
+## ################################# ##
+##            Privider
+## ################################# ##
 provider "aws" {
     access_key                  = "test_credentials"
     secret_key                  = "test_credentials"
@@ -5,7 +8,9 @@ provider "aws" {
     skip_credentials_validation = true
 }
 
-# VPC
+## ################################# ##
+##              VPC
+## ################################# ##
 resource "aws_vpc" "vpc" {
     cidr_block                  = var.vpc_cidr
     enable_dns_hostnames        = true
@@ -16,7 +21,10 @@ resource "aws_vpc" "vpc" {
     }
 }
 
-# Subnets
+## ################################# ##
+##            Subnets
+## ################################# ##
+
 # Internet Gateway
 resource "aws_internet_gateway" "internet_gateway" {
     vpc_id                      = aws_vpc.vpc.id
@@ -71,7 +79,10 @@ resource "aws_subnet" "private_subnet" {
         }
 }
 
-# Routing
+## ################################# ##
+##           Routing
+## ################################# ##
+
 # Routing Table for Public Subnet
 resource "aws_route_table" "public" {
         vpc_id                  = aws_vpc.vpc.id
@@ -89,3 +100,11 @@ resource "aws_route_table" "private" {
             Environment         = "$(var.environment}"
         }
 }
+
+# Routing for Internet Gateway
+resource "aws_route" "public_internet_gateway" {
+        route_table_id          = aws_route_table.public.id
+        destination_cidr_block  = "0.0.0.0/0"
+        gateway_id              = aws_internet_gateway.internet_gateway.id
+}
+
