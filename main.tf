@@ -54,13 +54,12 @@ resource "aws_nat_gateway" "nat" {
 # Public Subnet
 resource "aws_subnet" "public_subnet" {
         vpc_id                  = aws_vpc.vpc.id
-        count                   = length(var.public_subnets_cidr)
-        cidr_block              = element(var.public_subnets_cidr, count.index)
-        availability_zone       = element(var.availability_zones, count.index)
+        cidr_block              = "${var.public_subnets_cidr}"
+        availability_zone       = "${var.availability_zones}"
         map_public_ip_on_launch = true
 
         tags = {
-            Name                = "$[var.environment}-${element(var.availability_zones, count.index)}-public-subnet"
+            Name                = "$[var.environment}-${var.availability_zones}-public-subnet"
             Environment         = "${var.environment}"
         }
 }
@@ -69,8 +68,8 @@ resource "aws_subnet" "public_subnet" {
 resource "aws_subnet" "private_subnet" {
         vpc_id                  = aws_vpc.vpc.id
         count                   = length(var.private_subnets_cidr)
-        cidr_block              = element(var.private_subnets_cidr, count.index)
-        availability_zone       = element(var.availability_zones, count.index)
+        cidr_block              = "${var.private_subnets_cidr}"
+        availability_zone       = "${var.availability_zones}"
         map_public_ip_on_launch = false
 
         tags = {
@@ -139,6 +138,10 @@ resource "aws_route_table_association" "private" {
 }
 
 
+resource "aws_key_pair" "aws-key" {
+        key_name                = "aws-key"
+        public_key              = file(var.public_key_path)
+}
 ## ################################# ##
 ##         Security Groups
 ## ################################# ##
@@ -198,6 +201,32 @@ resource "aws_security_group" "rds" {
         }
 }
 
+# Nginx Security Group
+resource "aws_security_group" "allow-ssh" {
+        vpc_id                  = aws_vpc.vpc.id
+        ingress {
+            from_port           = 22
+            to_port             = 22
+            protocol            = "tcp"
+            # Restrict CIDR Block once known
+            cidr_blocks         = ["0.0.0.0/0"]
+        }
+        ingress {
+            from_port           = 80
+            to_port             = 80
+            protocol            = "tcp"
+            # Restrict CIDR Block once known
+            cidr_blocks         = ["0.0.0.0/0"] 
+        }
+        egress {
+            from_port           = 0
+            to_port             = 0
+            protocol            = -1
+            cidr_blocks         = ["0.0.0.0/0"]  
+        }
+        
+        
+}
 
 ## ################################# ##
 ##     Create RDS Instance
@@ -215,4 +244,42 @@ resource "aws_db_instance" "rds" {
         vpc_security_group_ids  = ["${aws_security_group.rds.id}"]
         skip_final_snapshot     = true
         final_snapshot_identifier = "Ignore"
+}
+
+
+## ################################# ##
+##     Create Nginx Instance
+## ################################# ##
+resource "aws_instance" "nginx_server" {
+        ami                     = "ami-08d70e59c07c61a3a"
+        instance_type           = "t2.micro"
+        subnet_id               = aws_subnet.public_subnet.id
+        vpc_security_group_ids      = ["${aws_security_group.allow-ssh.id}"]
+        key_name                = aws_key_pair.aws-key.id
+
+        # Store nginx.sh in EC2 instalnce
+        provisioner "file" {
+            source              = "nginx.sh"
+            destination         = "/tmp/nginx.sh"
+        }
+
+        # Install nginx
+        provisioner "remote-exec" {
+            inline = [
+                "chmod +x /tmp/nginx.sh",
+                "sudo /tmp/nginx.sh"
+            ]
+        }
+
+        # Setup SSH connection to nginx
+        connection {
+            type                = "ssh"
+            host                = self.public_ip
+            user                = "ubuntu"
+            private_key          = file("${var.private_key_path}")
+        }
+        tags = {
+            Name                = "${var.environment}-nginx"
+            Environment         = "${var.environment}"
+        }
 }

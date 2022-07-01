@@ -22,16 +22,32 @@ variable "vpc_cidr" {
 }
 
 variable "public_subnets_cidr" {
-    type = list
     description = "CIDR block for public subnet"
 }
 
 variable "private_subnets_cidr" {
-    type = list
     description = "CIDR block for private subnet"
 }
 
 variable "availability_zones" {
-    type = list
     description = "Availibility Zone that resources will be deployed in"
+}
+
+variable "public_key_path" {
+    default = "aws-key.pub"
+}
+## RDS ##
+variable "rds_instance_identifier" {}
+variable "database_name" {}
+variable "database_username" {}
+variable "database_password" {}
+variable "database_user" {}
+
+## NGINX ##
+variable "private_key_path" {
+    default = "aws-key"
+}
+
+variable "ec2_user" {
+    default = "ubuntu"
 }
