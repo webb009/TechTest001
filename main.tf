@@ -283,3 +283,58 @@ resource "aws_instance" "nginx_server" {
             Environment         = "${var.environment}"
         }
 }
+
+## ################################# ##
+##     Create ELB Instance
+## ################################# ##
+
+# Launch Config
+resource "aws_launch_configuration" "elb_launch" {
+  image_id               = ""
+  instance_type          = "t2.micro"
+  security_groups        = ["${aws_security_group.allow-ssh.id}"]
+  key_name               = "${var.public_key_path}"
+  user_data = <<-EOF
+              #!/bin/bash
+              echo "Hello, World" > index.html
+              nohup busybox httpd -f -p 8080 &
+              EOF
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+## Create AutoScaling Group
+resource "aws_autoscaling_group" "autoscale" {
+        launch_configuration    = "${aws_launch_configuration.elb_launch.id}"
+        availability_zones      = "${var.availability_zones}"
+        min_size                = 2
+        max_size                = 10
+        load_balancers          = ["${aws_elb.nginx_elb.name}"]
+        health_check_type       = "ELB"
+}
+
+## Create ELB
+resource "aws_elb" "nginx_elb" {
+        name                    = "${var.environment}-elb"
+        security_groups         = ["${aws_security_group.allow-ssh.id}"]
+        availability_zones      = "${var.availability_zones}"
+        health_check {
+            healthy_threshold = 2
+            unhealthy_threshold = 2
+            timeout = 3
+            interval = 30
+            target = "HTTP:8080/"
+        }
+        listener {
+            lb_port = 80
+            lb_protocol = "http"
+            instance_port = "8080"
+            instance_protocol = "http"
+        }
+
+        tags = {
+            Name                = "${var.environment}-elb"
+            Environment         = "${var.environment}"
+        }
+}
